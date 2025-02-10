@@ -1,0 +1,38 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # La pipeline se déclenche uniquement lors des pushs sur la branche main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # Vous devez définir la clé privée SSH dans les secrets GitHub
+        chmod 600 ~/.ssh/id_rsa  # Assurez-vous que la clé est privée
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openssh-client  # Installe l'outil SSH pour la connexion
+
+    - name: SSH into EC2 and pull latest changes
+      run: |
+        ssh -o StrictHostKeyChecking=no ec2-user@$EC2_PUBLIC_IP << 'EOF'
+          cd /path/to/your/project && git pull origin main  # Remplacez par le chemin et la commande pour votre projet
+        EOF
+      env:
+        EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}  # L'IP publique de votre instance EC2 stockée dans les secrets GitHub
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # La clé privée SSH stockée dans les secrets GitHub
+
+    - name: Clean up SSH
+      run: |
+        rm -rf ~/.ssh  # Supprimer le répertoire .ssh après l'utilisation

@@ -16,7 +16,7 @@ jobs:
     - name: Set up SSH key
       run: |
         mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # La clé privée est stockée dans les secrets GitHub
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/id_rsa  # La clé privée est stockée dans les secrets GitHub
         chmod 600 ~/.ssh/id_rsa  # Réglage des permissions pour la clé privée
 
         # Ajouter l'IP publique de l'instance EC2 dans known_hosts pour éviter un message de confirmation
@@ -32,7 +32,7 @@ jobs:
 
     - name: SSH into EC2 and pull latest changes
       run: |
-        ssh -v -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << 'EOF'
+        ssh -v -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           cd $WORK_DIR && git pull origin $MAIN_BRANCH  # Se déplacer dans le répertoire et exécuter un git pull
         EOF
       env:

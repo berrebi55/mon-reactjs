@@ -3,36 +3,38 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # La pipeline se déclenche uniquement lors des pushs sur la branche main
+      - main  # La pipeline ne se déclenche que pour les pushs sur la branche "main"
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Utiliser un environnement Ubuntu pour l'exécution du job
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2  # Vérification du code source
 
     - name: Set up SSH key
       run: |
         mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # Vous devez définir la clé privée SSH dans les secrets GitHub
-        chmod 600 ~/.ssh/id_rsa  # Assurez-vous que la clé est privée
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # La clé privée est stockée dans les secrets GitHub
+        chmod 600 ~/.ssh/id_rsa  # Réglage des permissions pour la clé privée
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y openssh-client  # Installe l'outil SSH pour la connexion
+        sudo apt-get install -y openssh-client  # Installation du client SSH pour la connexion
 
     - name: SSH into EC2 and pull latest changes
       run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@$EC2_PUBLIC_IP << 'EOF'
-          cd /path/to/your/project && git pull origin main  # Remplacez par le chemin et la commande pour votre projet
+        ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << 'EOF'
+          cd $WORK_DIR && git pull origin $MAIN_BRANCH  # Se déplacer dans le répertoire et exécuter un git pull
         EOF
       env:
-        EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}  # L'IP publique de votre instance EC2 stockée dans les secrets GitHub
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # La clé privée SSH stockée dans les secrets GitHub
+        SSH_USER: ${{ secrets.SSH_USER }}  # Utilisateur SSH (créé sur l'instance EC2)
+        SSH_HOST: ${{ secrets.SSH_HOST }}  # IP publique de l'instance EC2
+        WORK_DIR: ${{ secrets.WORK_DIR }}  # Chemin du projet sur l'instance EC2
+        MAIN_BRANCH: ${{ secrets.MAIN_BRANCH }}  # Branche principale (main)
 
     - name: Clean up SSH
       run: |
-        rm -rf ~/.ssh  # Supprimer le répertoire .ssh après l'utilisation
+        rm -rf ~/.ssh  # Suppression du répertoire .ssh après l'utilisation pour des raisons de sécurité

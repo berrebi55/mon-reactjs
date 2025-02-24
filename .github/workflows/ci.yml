@@ -16,7 +16,7 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_USER }}" > ~/.ssh/id_rsa  # Store the SSH private key from GitHub secrets
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa  # Store the SSH private key from GitHub secrets
           chmod 600 ~/.ssh/id_rsa  # Correct permission for the private key
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts  # Add the EC2 instance's public key to known_hosts
         env:

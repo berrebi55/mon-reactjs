@@ -13,6 +13,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2  # Checkout the code repository
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-client  # Install SSH client
+
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
@@ -22,11 +27,6 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-client  # Install SSH client
 
       - name: SSH into EC2 and pull latest changes
         run: |

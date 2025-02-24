@@ -1,44 +1,55 @@
-name: Deploy to EC2
+name: Deploy to AWS and EC2
 
 on:
   push:
     branches:
-      - main  # Trigger only on push to the main branch
+      - main  # Déclenche la pipeline uniquement sur un push sur la branche main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Use an Ubuntu runner
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2  # Checkout the code repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-client  # Install SSH client
+        #- name: Mettre à jour les paquets
+        #run: sudo apt update && sudo apt upgrade -y
 
-      - name: Set up SSH key
+      - name: Installer OpenSSH Client
+        run: sudo apt install -y openssh-client
+
+      - name: Ajouter la clé privée SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/id_rsa  # Store the SSH private key from GitHub secrets
-          chmod 600 ~/.ssh/id_rsa  # Correct permission for the private key
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts  # Add the EC2 instance's public key to known_hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
 
-      - name: SSH into EC2 and pull latest changes
+      - name: Déployer sur EC2
         run: |
-          ssh -v -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            cd ${{ secrets.WORK_DIR }} && git pull origin ${{ secrets.MAIN_BRANCH }}  # Pull latest changes from the main branch
-          EOF
-        env:
-          SSH_USER: ${{ secrets.SSH_USER }}  # SSH user
-          SSH_HOST: ${{ secrets.SSH_HOST }}  # EC2 instance public IP
-          WORK_DIR: ${{ secrets.WORK_DIR }}  # Path to the app on EC2
-          MAIN_BRANCH: ${{ secrets.MAIN_BRANCH }}  # GitHub main branch
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ${{ secrets.WORK_DIR }}
+            git pull origin main
+          
+            docker-compose down
+          
+            echo "🗑 Removing old Docker images..."
+            docker image prune -af
 
-      - name: Clean up SSH
-        run: |
-          rm -rf ~/.ssh  # Clean up the SSH directory for security reasons
+            echo "🔨 Rebuilding and restarting containers..."
+            docker-compose build --no-cache
+            docker-compose up -d
+          EOF
+
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          WORK_DIR: ${{ secrets.WORK_DIR }}
+
+
+      - name: Nettoyer le répertoire SSH
+        run: rm -rf ~/.ssh
